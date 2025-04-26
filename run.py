@@ -12,7 +12,7 @@ CLASSES = [
     "WheatGrass Stage 1", "WheatGrass Stage 2", "WheatGrass Stage 3"
 ]
 
-IMG_SIZE = (160, 160)  # Modify this to match your model input
+IMG_SIZE = (160, 160)  # Adjust to match your model's input shape
 
 # --- LOAD MODEL ---
 @st.cache_resource
@@ -22,31 +22,43 @@ def load_model_from_file(model_path='microgreens_model.h5'):
 model = load_model_from_file()
 
 # --- STREAMLIT UI ---
-st.title("📷 Real-Time Microgreen Classifier")
-st.markdown("Capture an image using your webcam to classify the microgreen type and its growth stage.")
+st.title("🌱 Microgreen Classifier")
+st.markdown("Choose how you want to upload the microgreen image:")
 
-# Capture webcam input
-camera_image = st.camera_input("Take a photo using your webcam")
+# --- Choose input method ---
+input_method = st.radio("Select input method:", ("Upload Image", "Use Webcam"))
 
-if camera_image:
-    image = Image.open(camera_image).convert("RGB")
-    st.image(image, caption="Captured Image", use_column_width=True)
+image = None
 
+if input_method == "Upload Image":
+    uploaded_file = st.file_uploader("Upload an image (jpg/png)", type=["jpg", "jpeg", "png"])
+    if uploaded_file:
+        image = Image.open(uploaded_file).convert("RGB")
+        st.image(image, caption="Uploaded Image", use_column_width=True)
+
+elif input_method == "Use Webcam":
+    camera_image = st.camera_input("Take a photo using your webcam")
+    if camera_image:
+        image = Image.open(camera_image).convert("RGB")
+        st.image(image, caption="Captured Image", use_column_width=True)
+
+# --- Perform Prediction ---
+if image is not None:
     # Preprocess
     img = image.resize(IMG_SIZE)
     img_array = img_to_array(img) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
-    # Prediction
+    # Predict
     prediction = model.predict(img_array)
     predicted_index = np.argmax(prediction)
     predicted_label = CLASSES[predicted_index]
 
-    # Parse and display
-    parts = predicted_label.split(" Stage ")
-    microgreen_type = parts[0]
-    growth_stage = f"Stage {parts[1]}"
+    # Parse
+    microgreen_type, stage_number = predicted_label.split(" Stage ")
+    growth_stage = f"Stage {stage_number}"
 
+    # Display result
     st.subheader("🔍 Prediction Result")
     st.write(f"**Microgreen Type:** {microgreen_type}")
     st.write(f"**Growth Stage:** {growth_stage}")
